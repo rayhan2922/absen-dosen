@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Dosen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <!-- Halaman Absensi Dosen -->
+    <div id="absensiPage" class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
+            <!-- Logo Kampus -->
+            <div class="text-center mb-6">
+                <div id="logoContainer" class="flex justify-center mb-4">
+                    <div id="defaultLogo" class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                        UNIV
+                    </div>
+                    <img id="customLogo" class="w-20 h-20 rounded-full object-cover hidden" alt="Logo Kampus">
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Absensi Dosen</h1>
+                <p class="text-gray-600">Silakan pilih nama, mata kuliah, dan kelas Anda</p>
+            </div>
+
+            <form id="absensiForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Dosen</label>
+                    <select id="namaDosen" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                        <option value="">-- Pilih Nama Dosen --</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mata Kuliah</label>
+                    <select id="mataKuliah" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required disabled>
+                        <option value="">-- Pilih Mata Kuliah --</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                    <select id="kelas" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required disabled>
+                        <option value="">-- Pilih Kelas --</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200">
+                    Absen Sekarang
+                </button>
+            </form>
+
+            <!-- Notifikasi -->
+            <div id="notification" class="mt-6 p-4 rounded-lg hidden">
+                <p id="notificationText" class="text-center font-medium"></p>
+            </div>
+
+            <!-- Tombol Admin -->
+            <div class="mt-8 text-center">
+                <button id="adminBtn" class="text-sm text-gray-500 hover:text-gray-700 underline">
+                    Masuk Admin
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-sm w-full mx-4">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Login Admin</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">
+                        Login
+                    </button>
+                    <button type="button" id="cancelLogin" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 rounded-lg">
+                        Batal
+                    </button>
+                </div>
+            </form>
+            <div id="loginError" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden">
+                Username atau password salah!
+            </div>
+        </div>
+    </div>
+
+    <!-- Halaman Admin -->
+    <div id="adminPage" class="hidden container mx-auto px-4 py-8">
+        <!-- Header Admin -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-800">Panel Admin</h1>
+                <button id="logoutBtn" class="no-print bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                    Logout
+                </button>
+            </div>
+            
+            <!-- Menu Tab -->
+            <div class="mt-6 border-b border-gray-200">
+                <nav class="flex space-x-8">
+                    <button id="tabAbsensi" class="tab-button py-2 px-1 border-b-2 border-blue-500 text-blue-600 font-medium">
+                        Rekapitulasi Absensi
+                    </button>
+                    <button id="tabDosen" class="tab-button py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        Data Dosen
+                    </button>
+                    <button id="tabLogo" class="tab-button py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        Pengaturan Logo
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Tab Rekapitulasi Absensi -->
+        <div id="contentAbsensi" class="tab-content bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Rekapitulasi Absensi Dosen</h2>
+            
+            <!-- Filter dan Aksi -->
+            <div class="no-print mb-6 flex flex-wrap gap-4">
+                <input type="date" id="filterTanggal" class="px-4 py-2 border border-gray-300 rounded-lg">
+                <select id="filterDosen" class="px-4 py-2 border border-gray-300 rounded-lg">
+                    <option value="">-- Semua Dosen --</option>
+                </select>
+                <button id="printBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                    🖨️ Print
+                </button>
+                <button id="pdfBtn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">
+                    📄 Simpan PDF
+                </button>
+            </div>
+
+            <!-- Tabel Rekapitulasi -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">No</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Tanggal</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Waktu</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Nama Dosen</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Mata Kuliah</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Kelas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="absensiTable">
+                        <!-- Data akan diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="totalAbsensi" class="mt-6 text-lg font-semibold text-gray-700">
+                Total Absensi: <span id="totalCount">0</span>
+            </div>
+        </div>
+
+        <!-- Tab Data Dosen -->
+        <div id="contentDosen" class="tab-content hidden bg-white rounded-xl shadow-lg p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Data Dosen & Mata Kuliah</h2>
+                <button id="tambahDosenBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                    ➕ Tambah Dosen
+                </button>
+            </div>
+
+            <!-- Tabel Data Dosen -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">No</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Nama Dosen</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Mata Kuliah</th>
+                            <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Kelas</th>
+                            <th class="border border-gray-300 px-4 py-3 text-center font-semibold">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dosenTable">
+                        <!-- Data akan diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab Pengaturan Logo -->
+        <div id="contentLogo" class="tab-content hidden bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Pengaturan Logo Kampus</h2>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Preview Logo -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Preview Logo Saat Ini</h3>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                        <div id="logoPreview" class="flex justify-center mb-4">
+                            <div id="previewDefaultLogo" class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                                UNIV
+                            </div>
+                            <img id="previewCustomLogo" class="w-24 h-24 rounded-full object-cover hidden" alt="Logo Preview">
+                        </div>
+                        <p class="text-gray-600">Logo yang sedang digunakan</p>
+                    </div>
+                </div>
+
+                <!-- Upload Logo -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Upload Logo Baru</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Pilih File Logo</label>
+                            <input type="file" id="logoFile" accept="image/*" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-sm text-gray-500 mt-2">Format: JPG, PNG, GIF (Maksimal 2MB)</p>
+                        </div>
+                        
+                        <div class="flex space-x-3">
+                            <button id="uploadLogoBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">
+                                📤 Upload Logo
+                            </button>
+                            <button id="resetLogoBtn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg">
+                                🔄 Reset ke Default
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifikasi Logo -->
+            <div id="logoNotification" class="mt-6 p-4 rounded-lg hidden">
+                <p id="logoNotificationText" class="text-center font-medium"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah/Edit Dosen -->
+    <div id="dosenModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+            <h2 id="dosenModalTitle" class="text-2xl font-bold text-gray-800 mb-6 text-center">Tambah Dosen</h2>
+            <form id="dosenForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Dosen</label>
+                    <input type="text" id="editNamaDosen" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mata Kuliah</label>
+                    <input type="text" id="editMataKuliah" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                    <input type="text" id="editKelas" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">
+                        Simpan
+                    </button>
+                    <button type="button" id="cancelDosen" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 rounded-lg">
+                        Batal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Database dosen dengan mata kuliah dan kelas yang diajarkan
+        let dosenDatabase = JSON.parse(localStorage.getItem('dosenDatabase')) || [
+            { id: 1, nama: "Dr. Ahmad Wijaya", mataKuliah: "Algoritma dan Pemrograman", kelas: "TI-1A" },
+            { id: 2, nama: "Dr. Ahmad Wijaya", mataKuliah: "Algoritma dan Pemrograman", kelas: "TI-1B" },
+            { id: 3, nama: "Dr. Ahmad Wijaya", mataKuliah: "Struktur Data", kelas: "TI-2A" },
+            { id: 4, nama: "Prof. Siti Nurhaliza", mataKuliah: "Basis Data", kelas: "TI-2A" },
+            { id: 5, nama: "Prof. Siti Nurhaliza", mataKuliah: "Basis Data", kelas: "TI-2B" },
+            { id: 6, nama: "Prof. Siti Nurhaliza", mataKuliah: "Sistem Informasi", kelas: "SI-1A" },
+            { id: 7, nama: "Dr. Budi Santoso", mataKuliah: "Jaringan Komputer", kelas: "TI-3A" },
+            { id: 8, nama: "Dr. Budi Santoso", mataKuliah: "Keamanan Sistem", kelas: "TI-4A" },
+            { id: 9, nama: "Dr. Maya Sari", mataKuliah: "Sistem Operasi", kelas: "TI-2A" },
+            { id: 10, nama: "Dr. Maya Sari", mataKuliah: "Sistem Operasi", kelas: "TI-2B" },
+            { id: 11, nama: "Prof. Andi Rahman", mataKuliah: "Kecerdasan Buatan", kelas: "TI-4A" },
+            { id: 12, nama: "Prof. Andi Rahman", mataKuliah: "Machine Learning", kelas: "TI-4B" },
+            { id: 13, nama: "Dr. Lisa Permata", mataKuliah: "Pemrograman Web", kelas: "TI-3A" },
+            { id: 14, nama: "Dr. Lisa Permata", mataKuliah: "Mobile Programming", kelas: "TI-3B" },
+            { id: 15, nama: "Dr. Rudi Hartono", mataKuliah: "Matematika Diskrit", kelas: "TI-1A" },
+            { id: 16, nama: "Dr. Rudi Hartono", mataKuliah: "Statistika", kelas: "TI-1B" },
+            { id: 17, nama: "Prof. Nina Kusuma", mataKuliah: "Rekayasa Perangkat Lunak", kelas: "TI-3A" },
+            { id: 18, nama: "Prof. Nina Kusuma", mataKuliah: "Manajemen Proyek IT", kelas: "TI-4A" }
+        ];
+
+        // Storage untuk data absensi dan logo
+        let absensiData = JSON.parse(localStorage.getItem('absensiData')) || [];
+        let customLogoData = localStorage.getItem('customLogo');
+        let editingDosenId = null;
+
+        // Elements
+        const absensiPage = document.getElementById('absensiPage');
+        const adminPage = document.getElementById('adminPage');
+        const loginModal = document.getElementById('loginModal');
+        const dosenModal = document.getElementById('dosenModal');
+        const absensiForm = document.getElementById('absensiForm');
+        const loginForm = document.getElementById('loginForm');
+        const dosenForm = document.getElementById('dosenForm');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notificationText');
+        const loginError = document.getElementById('loginError');
+        const namaDosenSelect = document.getElementById('namaDosen');
+        const mataKuliahSelect = document.getElementById('mataKuliah');
+        const kelasSelect = document.getElementById('kelas');
+        const filterDosenSelect = document.getElementById('filterDosen');
+
+        // Logo elements
+        const defaultLogo = document.getElementById('defaultLogo');
+        const customLogo = document.getElementById('customLogo');
+        const previewDefaultLogo = document.getElementById('previewDefaultLogo');
+        const previewCustomLogo = document.getElementById('previewCustomLogo');
+        const logoFile = document.getElementById('logoFile');
+        const logoNotification = document.getElementById('logoNotification');
+        const logoNotificationText = document.getElementById('logoNotificationText');
+
+        // Tab Management
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.id.replace('tab', '');
+                
+                // Update tab buttons
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('border-blue-500', 'text-blue-600');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                });
+                button.classList.add('border-blue-500', 'text-blue-600');
+                button.classList.remove('border-transparent', 'text-gray-500');
+                
+                // Update tab contents
+                tabContents.forEach(content => content.classList.add('hidden'));
+                document.getElementById('content' + tabId).classList.remove('hidden');
+                
+                // Load data sesuai tab
+                if (tabId === 'Absensi') {
+                    loadAbsensiData();
+                } else if (tabId === 'Dosen') {
+                    loadDosenData();
+                } else if (tabId === 'Logo') {
+                    updateLogoPreview();
+                }
+            });
+        });
+
+        // Initialize dropdowns
+        function initializeDropdowns() {
+            // Get unique dosen names
+            const uniqueDosen = [...new Set(dosenDatabase.map(d => d.nama))];
+            
+            // Clear existing options
+            namaDosenSelect.innerHTML = '<option value="">-- Pilih Nama Dosen --</option>';
+            filterDosenSelect.innerHTML = '<option value="">-- Semua Dosen --</option>';
+            
+            // Populate nama dosen dropdown
+            uniqueDosen.forEach(nama => {
+                const option = document.createElement('option');
+                option.value = nama;
+                option.textContent = nama;
+                namaDosenSelect.appendChild(option);
+                
+                // Also populate filter dropdown
+                const filterOption = document.createElement('option');
+                filterOption.value = nama;
+                filterOption.textContent = nama;
+                filterDosenSelect.appendChild(filterOption);
+            });
+        }
+
+        // Handle nama dosen selection
+        namaDosenSelect.addEventListener('change', function() {
+            const selectedDosen = this.value;
+            mataKuliahSelect.innerHTML = '<option value="">-- Pilih Mata Kuliah --</option>';
+            kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+            
+            if (selectedDosen) {
+                const mataKuliahList = [...new Set(dosenDatabase
+                    .filter(d => d.nama === selectedDosen)
+                    .map(d => d.mataKuliah))];
+                
+                mataKuliahList.forEach(mk => {
+                    const option = document.createElement('option');
+                    option.value = mk;
+                    option.textContent = mk;
+                    mataKuliahSelect.appendChild(option);
+                });
+                mataKuliahSelect.disabled = false;
+            } else {
+                mataKuliahSelect.disabled = true;
+                kelasSelect.disabled = true;
+            }
+        });
+
+        // Handle mata kuliah selection
+        mataKuliahSelect.addEventListener('change', function() {
+            const selectedDosen = namaDosenSelect.value;
+            const selectedMataKuliah = this.value;
+            kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+            
+            if (selectedDosen && selectedMataKuliah) {
+                const kelasList = dosenDatabase
+                    .filter(d => d.nama === selectedDosen && d.mataKuliah === selectedMataKuliah)
+                    .map(d => d.kelas);
+                
+                kelasList.forEach(kelas => {
+                    const option = document.createElement('option');
+                    option.value = kelas;
+                    option.textContent = kelas;
+                    kelasSelect.appendChild(option);
+                });
+                kelasSelect.disabled = false;
+            } else {
+                kelasSelect.disabled = true;
+            }
+        });
+
+        // Logo Management
+        function loadLogo() {
+            if (customLogoData) {
+                customLogo.src = customLogoData;
+                customLogo.classList.remove('hidden');
+                defaultLogo.classList.add('hidden');
+            } else {
+                customLogo.classList.add('hidden');
+                defaultLogo.classList.remove('hidden');
+            }
+        }
+
+        function updateLogoPreview() {
+            if (customLogoData) {
+                previewCustomLogo.src = customLogoData;
+                previewCustomLogo.classList.remove('hidden');
+                previewDefaultLogo.classList.add('hidden');
+            } else {
+                previewCustomLogo.classList.add('hidden');
+                previewDefaultLogo.classList.remove('hidden');
+            }
+        }
+
+        function showLogoNotification(message, type) {
+            logoNotificationText.textContent = message;
+            logoNotification.className = `mt-6 p-4 rounded-lg ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            logoNotification.classList.remove('hidden');
+            
+            setTimeout(() => {
+                logoNotification.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Event Listeners
+        document.getElementById('adminBtn').addEventListener('click', () => {
+            loginModal.classList.remove('hidden');
+            loginModal.classList.add('flex');
+        });
+
+        document.getElementById('cancelLogin').addEventListener('click', () => {
+            loginModal.classList.add('hidden');
+            loginModal.classList.remove('flex');
+            loginError.classList.add('hidden');
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            adminPage.classList.add('hidden');
+            absensiPage.classList.remove('hidden');
+        });
+
+        document.getElementById('tambahDosenBtn').addEventListener('click', () => {
+            editingDosenId = null;
+            document.getElementById('dosenModalTitle').textContent = 'Tambah Dosen';
+            document.getElementById('editNamaDosen').value = '';
+            document.getElementById('editMataKuliah').value = '';
+            document.getElementById('editKelas').value = '';
+            dosenModal.classList.remove('hidden');
+            dosenModal.classList.add('flex');
+        });
+
+        document.getElementById('cancelDosen').addEventListener('click', () => {
+            dosenModal.classList.add('hidden');
+            dosenModal.classList.remove('flex');
+        });
+
+        // Logo upload
+        document.getElementById('uploadLogoBtn').addEventListener('click', () => {
+            const file = logoFile.files[0];
+            if (!file) {
+                showLogoNotification('❌ Silakan pilih file logo terlebih dahulu!', 'error');
+                return;
+            }
+
+            if (file.size > 2 * 1024 * 1024) {
+                showLogoNotification('❌ Ukuran file terlalu besar! Maksimal 2MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                customLogoData = e.target.result;
+                localStorage.setItem('customLogo', customLogoData);
+                loadLogo();
+                updateLogoPreview();
+                showLogoNotification('✅ Logo berhasil diupload!', 'success');
+                logoFile.value = '';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('resetLogoBtn').addEventListener('click', () => {
+            if (confirm('Apakah Anda yakin ingin mengembalikan logo ke default?')) {
+                customLogoData = null;
+                localStorage.removeItem('customLogo');
+                loadLogo();
+                updateLogoPreview();
+                showLogoNotification('✅ Logo berhasil direset ke default!', 'success');
+            }
+        });
+
+        // Form Absensi
+        absensiForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const nama = namaDosenSelect.value;
+            const mataKuliah = mataKuliahSelect.value;
+            const kelas = kelasSelect.value;
+            
+            if (!nama || !mataKuliah || !kelas) {
+                showNotification('❌ Silakan pilih nama dosen, mata kuliah, dan kelas!', 'error');
+                return;
+            }
+            
+            // Cek apakah kombinasi dosen, mata kuliah, dan kelas valid
+            const dosenValid = dosenDatabase.find(dosen => 
+                dosen.nama === nama && dosen.mataKuliah === mataKuliah && dosen.kelas === kelas
+            );
+            
+            if (dosenValid) {
+                // Cek apakah sudah absen hari ini
+                const today = new Date().toLocaleDateString('id-ID');
+                const sudahAbsen = absensiData.find(absen => 
+                    absen.nama === nama && 
+                    absen.mataKuliah === mataKuliah && 
+                    absen.kelas === kelas &&
+                    absen.tanggal === today
+                );
+                
+                if (sudahAbsen) {
+                    showNotification('⚠️ Anda sudah melakukan absensi untuk mata kuliah dan kelas ini hari ini!', 'error');
+                    return;
+                }
+                
+                // Simpan absensi
+                const now = new Date();
+                const absensi = {
+                    id: Date.now(),
+                    tanggal: now.toLocaleDateString('id-ID'),
+                    waktu: now.toLocaleTimeString('id-ID'),
+                    nama: nama,
+                    mataKuliah: mataKuliah,
+                    kelas: kelas,
+                    timestamp: now.getTime()
+                };
+                
+                absensiData.push(absensi);
+                localStorage.setItem('absensiData', JSON.stringify(absensiData));
+                
+                // Tampilkan notifikasi sukses
+                showNotification('✅ Absensi berhasil dicatat!', 'success');
+                absensiForm.reset();
+                mataKuliahSelect.disabled = true;
+                kelasSelect.disabled = true;
+                mataKuliahSelect.innerHTML = '<option value="">-- Pilih Mata Kuliah --</option>';
+                kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+            } else {
+                // Tampilkan notifikasi error
+                showNotification('❌ Kombinasi dosen, mata kuliah, dan kelas tidak valid!', 'error');
+            }
+        });
+
+        // Login Admin
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (username === 'user' && password === 'user') {
+                loginModal.classList.add('hidden');
+                loginModal.classList.remove('flex');
+                absensiPage.classList.add('hidden');
+                adminPage.classList.remove('hidden');
+                loadAbsensiData();
+                loginError.classList.add('hidden');
+                loginForm.reset();
+            } else {
+                loginError.classList.remove('hidden');
+            }
+        });
+
+        // Form Dosen
+        dosenForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const nama = document.getElementById('editNamaDosen').value.trim();
+            const mataKuliah = document.getElementById('editMataKuliah').value.trim();
+            const kelas = document.getElementById('editKelas').value.trim();
+            
+            if (editingDosenId) {
+                // Edit dosen
+                const index = dosenDatabase.findIndex(d => d.id === editingDosenId);
+                if (index !== -1) {
+                    dosenDatabase[index] = { id: editingDosenId, nama, mataKuliah, kelas };
+                }
+            } else {
+                // Tambah dosen baru
+                const newId = Math.max(...dosenDatabase.map(d => d.id), 0) + 1;
+                dosenDatabase.push({ id: newId, nama, mataKuliah, kelas });
+            }
+            
+            localStorage.setItem('dosenDatabase', JSON.stringify(dosenDatabase));
+            loadDosenData();
+            initializeDropdowns(); // Refresh dropdowns
+            
+            dosenModal.classList.add('hidden');
+            dosenModal.classList.remove('flex');
+        });
+
+        // Print dan PDF
+        document.getElementById('printBtn').addEventListener('click', () => {
+            window.print();
+        });
+
+        document.getElementById('pdfBtn').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(16);
+            doc.text('Rekapitulasi Absensi Dosen', 20, 20);
+            
+            doc.setFontSize(10);
+            let y = 40;
+            
+            // Header tabel
+            doc.text('No', 20, y);
+            doc.text('Tanggal', 35, y);
+            doc.text('Waktu', 70, y);
+            doc.text('Nama Dosen', 100, y);
+            doc.text('Mata Kuliah', 140, y);
+            doc.text('Kelas', 180, y);
+            
+            y += 10;
+            
+            // Data
+            const filteredData = getFilteredData();
+            filteredData.forEach((item, index) => {
+                if (y > 280) {
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.text((index + 1).toString(), 20, y);
+                doc.text(item.tanggal, 35, y);
+                doc.text(item.waktu, 70, y);
+                doc.text(item.nama.substring(0, 15), 100, y);
+                doc.text(item.mataKuliah.substring(0, 15), 140, y);
+                doc.text(item.kelas, 180, y);
+                y += 8;
+            });
+            
+            doc.save('rekapitulasi-absensi.pdf');
+        });
+
+        // Filter
+        document.getElementById('filterTanggal').addEventListener('change', loadAbsensiData);
+        document.getElementById('filterDosen').addEventListener('change', loadAbsensiData);
+
+        function showNotification(message, type) {
+            notificationText.textContent = message;
+            notification.className = `mt-6 p-4 rounded-lg ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            notification.classList.remove('hidden');
+            
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 4000);
+        }
+
+        function getFilteredData() {
+            let filtered = [...absensiData];
+            
+            const filterTanggal = document.getElementById('filterTanggal').value;
+            const filterDosen = document.getElementById('filterDosen').value;
+            
+            if (filterTanggal) {
+                const targetDate = new Date(filterTanggal).toLocaleDateString('id-ID');
+                filtered = filtered.filter(item => item.tanggal === targetDate);
+            }
+            
+            if (filterDosen) {
+                filtered = filtered.filter(item => item.nama === filterDosen);
+            }
+            
+            return filtered.sort((a, b) => b.timestamp - a.timestamp);
+        }
+
+        function loadAbsensiData() {
+            const tableBody = document.getElementById('absensiTable');
+            const filteredData = getFilteredData();
+            
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">Belum ada data absensi</td></tr>';
+            } else {
+                tableBody.innerHTML = filteredData.map((item, index) => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="border border-gray-300 px-4 py-3">${index + 1}</td>
+                        <td class="border border-gray-300 px-4 py-3">${item.tanggal}</td>
+                        <td class="border border-gray-300 px-4 py-3">${item.waktu}</td>
+                        <td class="border border-gray-300 px-4 py-3">${item.nama}</td>
+                        <td class="border border-gray-300 px-4 py-3">${item.mataKuliah}</td>
+                        <td class="border border-gray-300 px-4 py-3">${item.kelas}</td>
+                    </tr>
+                `).join('');
+            }
+            
+            document.getElementById('totalCount').textContent = filteredData.length;
+        }
+
+        function loadDosenData() {
+            const tableBody = document.getElementById('dosenTable');
+            
+            if (dosenDatabase.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="border border-gray-300 px-4 py-8 text-center text-gray-500">Belum ada data dosen</td></tr>';
+            } else {
+                tableBody.innerHTML = dosenDatabase.map((dosen, index) => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="border border-gray-300 px-4 py-3">${index + 1}</td>
+                        <td class="border border-gray-300 px-4 py-3">${dosen.nama}</td>
+                        <td class="border border-gray-300 px-4 py-3">${dosen.mataKuliah}</td>
+                        <td class="border border-gray-300 px-4 py-3">${dosen.kelas}</td>
+                        <td class="border border-gray-300 px-4 py-3 text-center">
+                            <button onclick="editDosen(${dosen.id})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-2">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="deleteDosen(${dosen.id})" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">
+                                🗑️ Hapus
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function editDosen(id) {
+            const dosen = dosenDatabase.find(d => d.id === id);
+            if (dosen) {
+                editingDosenId = id;
+                document.getElementById('dosenModalTitle').textContent = 'Edit Dosen';
+                document.getElementById('editNamaDosen').value = dosen.nama;
+                document.getElementById('editMataKuliah').value = dosen.mataKuliah;
+                document.getElementById('editKelas').value = dosen.kelas;
+                dosenModal.classList.remove('hidden');
+                dosenModal.classList.add('flex');
+            }
+        }
+
+        function deleteDosen(id) {
+            if (confirm('Apakah Anda yakin ingin menghapus data dosen ini?')) {
+                dosenDatabase = dosenDatabase.filter(d => d.id !== id);
+                localStorage.setItem('dosenDatabase', JSON.stringify(dosenDatabase));
+                loadDosenData();
+                initializeDropdowns(); // Refresh dropdowns
+            }
+        }
+
+        // Load initial data jika ada
+        if (absensiData.length === 0) {
+            // Tambahkan beberapa data contoh
+            const sampleData = [
+                {
+                    id: 1,
+                    tanggal: new Date().toLocaleDateString('id-ID'),
+                    waktu: '08:00:00',
+                    nama: 'Dr. Ahmad Wijaya',
+                    mataKuliah: 'Algoritma dan Pemrograman',
+                    kelas: 'TI-1A',
+                    timestamp: Date.now() - 3600000
+                },
+                {
+                    id: 2,
+                    tanggal: new Date().toLocaleDateString('id-ID'),
+                    waktu: '10:00:00',
+                    nama: 'Prof. Siti Nurhaliza',
+                    mataKuliah: 'Basis Data',
+                    kelas: 'TI-2A',
+                    timestamp: Date.now() - 1800000
+                },
+                {
+                    id: 3,
+                    tanggal: new Date(Date.now() - 86400000).toLocaleDateString('id-ID'),
+                    waktu: '09:30:00',
+                    nama: 'Dr. Budi Santoso',
+                    mataKuliah: 'Jaringan Komputer',
+                    kelas: 'TI-3A',
+                    timestamp: Date.now() - 90000000
+                }
+            ];
+            
+            absensiData = sampleData;
+            localStorage.setItem('absensiData', JSON.stringify(absensiData));
+        }
+
+        // Simpan database dosen ke localStorage
+        localStorage.setItem('dosenDatabase', JSON.stringify(dosenDatabase));
+
+        // Initialize aplikasi
+        initializeDropdowns();
+        loadLogo();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'975c52a6a0a5a06c',t:'MTc1NjMwNTYxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
